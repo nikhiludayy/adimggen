@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ad Image Generator</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 700px;
+      margin: auto;
+      padding: 30px;
+      background-color: #f9fafc;
+      color: #333;
+    }
+
+    h2 {
+      text-align: center;
+      color: #0057b7;
+    }
+
+    form {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+    }
+
+    input {
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 12px;
+      font-size: 1rem;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: #0057b7;
+      outline: none;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #0057b7;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      transition: background-color 0.2s;
+    }
+
+    button[type="button"] {
+      background-color: #6c757d;
+    }
+
+    button:hover {
+      background-color: #003f8f;
+    }
+
+    #loader {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .spinner {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #0057b7;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #result {
+      margin-top: 30px;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+
+    #result h3 {
+      color: #333;
+      margin-top: 0;
+    }
+
+    #result p {
+      font-family: Consolas, monospace;
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-left: 4px solid #0057b7;
+      white-space: pre-wrap;
+      border-radius: 4px;
+    }
+
+    #result img {
+      max-width: 100%;
+      display: block;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 1rem;
+      border-radius: 4px;
+      background-color: #fdfdfd;
+    }
+
+    .download-btn {
+      display: inline-block;
+      background-color: #28a745;
+      color: #fff;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 10px 20px;
+      margin-top: 15px;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+
+    .download-btn:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <h2>Ad Image Generator</h2>
+
+  <form id="adForm">
+    <input type="text" id="product" placeholder="Enter product name" required />
+    <input type="text" id="audience" placeholder="Enter target audience" required />
+    <div>
+      <button type="submit">Generate Image</button>
+      <button type="button" onclick="window.location.reload()">Generate Another</button>
+    </div>
+  </form>
+
+  <div id="loader">
+    <p>Generating image...</p>
+    <div class="spinner"></div>
+  </div>
+
+  <div id="result"></div>
+
+  <script>
+  document.getElementById("adForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const product = document.getElementById("product").value;
+    const audience = document.getElementById("audience").value;
+
+    document.getElementById("result").innerHTML = "";
+    document.getElementById("loader").style.display = "block";
+
+    try {
+      const response = await fetch("http://localhost:8000/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product, audience }),
+      });
+
+      const data = await response.json();
+      document.getElementById("loader").style.display = "none";
+
+      if (!response.ok) {
+        let message = "";
+
+        if (response.status === 422 && data.errors) {
+          message = `<ul>${data.errors.map(err =>
+            `<li>${err.loc.join(".")}: ${err.msg}</li>`).join("")}</ul>`;
+        } else if (data.detail) {
+          message = `<p>${data.detail}</p>`;
+        } else {
+          message = "<p>An unexpected error occurred.</p>";
+        }
+
+        document.getElementById("result").innerHTML = `
+          <h3 style="color: crimson;">Error (${response.status})</h3>
+          ${message}
+        `;
+        return;
+      }
+
+      // Display image and prompt
+      document.getElementById("result").innerHTML = `
+        <h3>Generated Prompt:</h3>
+        <p>${data.prompt}</p>
+
+        <h3>Generated Image:</h3>
+        <img src="${data.image_url}" alt="Generated Ad Image" />
+        <a href="${data.image_url}" download class="download-btn" target="_blank">Download Image</a>
+      `;
+    } catch (err) {
+      document.getElementById("loader").style.display = "none";
+      document.getElementById("result").innerHTML = `
+        <h3 style="color: crimson;">Network Error</h3>
+        <p>Unable to reach the backend. Please check your connection or server status.</p>
+      `;
+    }
+  });
+  
+</script>
+</body>
+</html>
